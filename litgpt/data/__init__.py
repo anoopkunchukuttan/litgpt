@@ -13,6 +13,7 @@ from litgpt.data.longform import LongForm
 from litgpt.data.microllama import MicroLlama
 from litgpt.data.openwebtext import OpenWebText
 from litgpt.data.text_files import TextFiles
+from litgpt.data.text_files_multival import TextFilesMultiVal
 from litgpt.data.tinyllama import TinyLlama
 from litgpt.data.tinystories import TinyStories
 
@@ -30,6 +31,7 @@ __all__ = [
     "OpenWebText",
     "SFTDataset",
     "TextFiles",
+    "TextFilesMultiVal",
     "TinyLlama",
     "TinyStories",
     "MicroLlama",

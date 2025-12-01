@@ -1,0 +1,63 @@
+# Example 2: Multiple validation sets
+# Track performance across different domains, languages, or difficulty levels
+
+model_name: pythia-14m
+out_dir: out/pretrain/multi_val_example
+precision: bf16-mixed
+
+data:
+  class_path: litgpt.data.TextFilesMultiVal
+  init_args:
+    train_data_path: /path/to/train
+    val_data_path:
+      val_main: /path/to/val_main          # Main validation set
+      val_news: /path/to/val_news          # News domain
+      val_code: /path/to/val_code          # Code domain
+      val_medical: /path/to/val_medical    # Medical domain
+      val_en: /path/to/val_english         # English language
+      val_es: /path/to/val_spanish         # Spanish language
+      val_fr: /path/to/val_french          # French language
+    num_workers: 4
+
+train:
+  save_interval: 1000
+  log_interval: 1
+  global_batch_size: 512
+  micro_batch_size: 4
+  max_tokens: 1000000000
+  max_norm: 1.0
+  min_lr: 4e-5
+
+eval:
+  interval: 1000      # Validate every 1000 steps
+  max_iters: 100      # Use 100 batches per validation set
+  initial_validation: true
+  final_validation: true
+
+tokenizer_dir: checkpoints/EleutherAI/pythia-14m
+
+logger_name: wandb
+log:
+  project: litgpt-multi-val
+  run: multi-val-domains-run1
+
+# Expected console output during training:
+# Epoch 1 | iter 1000 step 16 | loss train: 2.345, val: val_main: 2.456 | val_news: 2.789 | val_code: 3.012 | val_medical: 2.567 | val_en: 2.234 | val_es: 2.456 | val_fr: 2.678 | ...
+# 
+# iter 1000: val_main loss 2.4560
+# iter 1000: val_news loss 2.7890
+# iter 1000: val_code loss 3.0120
+# iter 1000: val_medical loss 2.5670
+# iter 1000: val_en loss 2.2340
+# iter 1000: val_es loss 2.4560
+# iter 1000: val_fr loss 2.6780
+# Total validation time: 1250.45 ms
+
+# Expected WandB metrics:
+# - val_main/loss, val_main/ppl
+# - val_news/loss, val_news/ppl
+# - val_code/loss, val_code/ppl
+# - val_medical/loss, val_medical/ppl
+# - val_en/loss, val_en/ppl
+# - val_es/loss, val_es/ppl
+# - val_fr/loss, val_fr/ppl

@@ -218,7 +218,17 @@ def main(
     optimizer = fabric.setup_optimizers(optimizer)
 
     train_dataloader, val_dataloader = get_dataloaders(fabric, data, tokenizer, train, model.max_seq_length)
-    train_dataloader, val_dataloader = fabric.setup_dataloaders(train_dataloader, val_dataloader)
+    
+    # Handle both single validation loader and dict of loaders
+    if isinstance(val_dataloader, dict):
+        # Multiple validation sets
+        val_loaders_list = list(val_dataloader.values())
+        setup_result = fabric.setup_dataloaders(train_dataloader, *val_loaders_list)
+        train_dataloader = setup_result[0]
+        val_dataloader = dict(zip(val_dataloader.keys(), setup_result[1:]))
+    else:
+        # Single validation set
+        train_dataloader, val_dataloader = fabric.setup_dataloaders(train_dataloader, val_dataloader)
 
     if initial_checkpoint_dir:
         fabric.load_raw(initial_checkpoint_dir / "lit_model.pth", model)
@@ -289,7 +299,7 @@ def fit(
     devices: int,
     state: dict,
     train_dataloader: DataLoader,
-    val_dataloader: DataLoader,
+    val_dataloader: Union[DataLoader, Dict[str, DataLoader]],
     out_dir: Path,
     tokenizer_dir: Optional[Path],
     train: TrainArgs,
@@ -298,14 +308,26 @@ def fit(
 ) -> None:
     model = state["model"]
     optimizer = state["optimizer"]
-
-    if eval.initial_validation:
-        val_loss = validate(fabric, model, val_dataloader, max_iters=eval.max_iters)
-        val_loss = f"{val_loss:.3f}"
+    
+    # Normalize val_dataloader to dict for uniform handling
+    if not isinstance(val_dataloader, dict):
+        val_dataloaders = {"val": val_dataloader} if val_dataloader is not None else {}
     else:
-        fabric.print("Verifying settings ...")
-        validate(fabric, model, val_dataloader, max_iters=2, verbose=False)  # sanity check
-        val_loss = "n/a"
+        val_dataloaders = val_dataloader
+
+    if eval.initial_validation and val_dataloaders:
+        val_losses = {}
+        for val_name, val_loader in val_dataloaders.items():
+            loss = validate(fabric, model, val_loader, max_iters=eval.max_iters, dataset_name=val_name)
+            val_losses[val_name] = f"{loss:.3f}"
+        val_loss = " | ".join([f"{name}: {loss}" for name, loss in val_losses.items()])
+    else:
+        if val_dataloaders:
+            fabric.print("Verifying settings ...")
+            first_val_name = list(val_dataloaders.keys())[0]
+            validate(fabric, model, val_dataloaders[first_val_name], max_iters=2, verbose=False, dataset_name=first_val_name)  # sanity check
+        val_losses = {name: "n/a" for name in val_dataloaders.keys()}
+        val_loss = " | ".join([f"{name}: {loss}" for name, loss in val_losses.items()]) if val_losses else "n/a"
 
     throughput = ThroughputMonitor(fabric, window_size=5)
 
@@ -400,35 +422,51 @@ def fit(
             metrics.update(throughput_metrics)
             fabric.log_dict(metrics, step=state["iter_num"] - 1)
 
-        if val_dataloader is not None and not is_accumulating and state["step_count"] % eval.interval == 0:
+        if val_dataloaders and not is_accumulating and state["step_count"] % eval.interval == 0:
             t0 = time.perf_counter()
-            val_loss = validate(fabric, model, val_dataloader, max_iters=eval.max_iters)
-            val_loss = val_loss.item()
+            
+            for val_name, val_loader in val_dataloaders.items():
+                val_loss_tensor = validate(fabric, model, val_loader, max_iters=eval.max_iters, dataset_name=val_name)
+                val_loss_item = val_loss_tensor.item()
+                val_losses[val_name] = f"{val_loss_item:.3f}"
+                
+                fabric.print(f"iter {state['iter_num']}: {val_name} loss {val_loss_item:.4f}")
+                
+                # Log with dataset-specific keys
+                metrics_val = {
+                    f"{val_name}/loss": val_loss_item,
+                    f"{val_name}/ppl": math.exp(val_loss_item)
+                }
+                fabric.log_dict(metrics_val, step=state["iter_num"] - 1)
+            
             td = time.perf_counter() - t0
-
-            fabric.print(f"iter {state['iter_num']}: val loss {val_loss:.4f}, val time: {td * 1000:.2f} ms")
-            metrics = {"val_loss": val_loss, "val_ppl": math.exp(val_loss)}
-            fabric.log_dict(metrics, step=state["iter_num"] - 1)
+            val_loss = " | ".join([f"{name}: {loss}" for name, loss in val_losses.items()])
+            fabric.print(f"Total validation time: {td * 1000:.2f} ms")
             fabric.barrier()
 
         if train.save_interval is not None and not is_accumulating and state["step_count"] % train.save_interval == 0:
             save_checkpoint(fabric, state, tokenizer_dir, out_dir / f"step-{state['step_count']:08d}" / "lit_model.pth")
 
     # Final validation
-    if eval.final_validation:
-        val_loss = validate(fabric, model, val_dataloader, max_iters=eval.max_iters)
-        metrics = {"val_loss": val_loss, "val_ppl": math.exp(val_loss)}
-        fabric.log_dict(metrics, step=state["iter_num"])
-        fabric.print(f"Final evaluation | val loss: {val_loss.item():.3f} | val ppl: {math.exp(val_loss):.3f}")
+    if eval.final_validation and val_dataloaders:
+        fabric.print("Final validation on all datasets:")
+        for val_name, val_loader in val_dataloaders.items():
+            val_loss = validate(fabric, model, val_loader, max_iters=eval.max_iters, dataset_name=val_name)
+            metrics = {
+                f"{val_name}/final_loss": val_loss,
+                f"{val_name}/final_ppl": math.exp(val_loss)
+            }
+            fabric.log_dict(metrics, step=state["iter_num"])
+            fabric.print(f"  {val_name} | loss: {val_loss.item():.3f} | ppl: {math.exp(val_loss):.3f}")
 
 
 @torch.no_grad()
 def validate(
-    fabric: L.Fabric, model: nn.Module, val_dataloader: DataLoader, max_iters: int, verbose: bool = True
+    fabric: L.Fabric, model: nn.Module, val_dataloader: DataLoader, max_iters: int, verbose: bool = True, dataset_name: str = "val"
 ) -> torch.Tensor:
     fabric.barrier()
     if verbose:
-        fabric.print("Validating ...")
+        fabric.print(f"Validating {dataset_name} ...")
     model.eval()
 
     losses = []
@@ -441,7 +479,12 @@ def validate(
         loss = chunked_cross_entropy(logits, targets)
         losses.append(loss)
 
-    val_loss = torch.stack(losses).mean()
+    if not losses:
+        fabric.print(f"Warning: No validation batches processed for {dataset_name}. Returning NaN loss.")
+        val_loss = torch.tensor(float('nan'), device=fabric.device)
+    else:
+        val_loss = torch.stack(losses).mean()
+    
     model.train()
     fabric.barrier()
     return val_loss
@@ -449,13 +492,19 @@ def validate(
 
 def get_dataloaders(
     fabric: L.Fabric, data: DataModule, tokenizer: Tokenizer, train: TrainArgs, block_size: int
-) -> Tuple[DataLoader, DataLoader]:
+) -> Tuple[DataLoader, Union[DataLoader, Dict[str, DataLoader]]]:
     data.connect(tokenizer=tokenizer, batch_size=train.micro_batch_size, max_seq_length=block_size)
     with fabric.rank_zero_first():
         data.prepare_data()
     data.setup()
     train_dataloader = data.train_dataloader()
-    val_dataloader = data.val_dataloader()
+    
+    # Check if data module supports multiple validation sets
+    if hasattr(data, 'val_dataloaders') and callable(getattr(data, 'val_dataloaders')):
+        val_dataloader = data.val_dataloaders()  # Returns dict
+    else:
+        val_dataloader = data.val_dataloader()  # Returns single DataLoader
+    
     return train_dataloader, val_dataloader
 
 

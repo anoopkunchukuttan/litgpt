@@ -1,0 +1,43 @@
+# Example 3: Auto-split validation from training data
+# Use the first .txt file for validation, rest for training
+
+model_name: pythia-14m
+out_dir: out/pretrain/autosplit_example
+precision: bf16-mixed
+
+data:
+  class_path: litgpt.data.TextFilesMultiVal
+  init_args:
+    train_data_path: /path/to/train  # Directory with multiple .txt files
+    # val_data_path not specified - will auto-split
+    num_workers: 4
+
+# Note: The train_data_path directory must contain at least 2 .txt files
+# The first file (alphabetically) will be used for validation
+# All remaining files will be used for training
+
+train:
+  save_interval: 1000
+  log_interval: 1
+  global_batch_size: 512
+  micro_batch_size: 4
+  max_tokens: 1000000000
+  max_norm: 1.0
+  min_lr: 4e-5
+
+eval:
+  interval: 1000
+  max_iters: 100
+  initial_validation: true
+  final_validation: true
+
+tokenizer_dir: checkpoints/EleutherAI/pythia-14m
+
+logger_name: wandb
+log:
+  project: litgpt-autosplit
+  run: autosplit-run1
+
+# Expected output:
+# iter 1000: val loss 2.4560
+# WandB metrics: val/loss, val/ppl
