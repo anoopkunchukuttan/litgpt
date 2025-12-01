@@ -1168,6 +1168,9 @@ for c in gemma:
 # Google Gemma 3
 ##################
 gemma3 = [
+
+    ### Instruction tuned models
+
     # https://huggingface.co/google/gemma-3-1b-it/blob/main/config.json
     dict(
         name="Gemma-3-1b-it",
@@ -1296,6 +1299,139 @@ gemma3 = [
         # 5 local layers for every global layer
         rope_indices=[0 if (i + 1) % 6 == 0 else 1 for i in range(62)],
     ),
+
+    ### Base models
+
+    # https://huggingface.co/google/gemma-3-1b-pt/blob/main/config.json
+    dict(
+        name="Gemma-3-1b-pt",
+        hf_config=dict(org="google", name="gemma-3-1b-pt"),
+        scale_embeddings=True,
+        attention_scores_scalar=256,
+        vocab_size=262144,
+        block_size=131072,
+        sliding_window_size=512,
+        # 5 local layers for every global layer
+        sliding_window_indices=[0 if (i + 1) % 6 == 0 else 1 for i in range(26)],
+        intermediate_size=6912,
+        n_embd=1152,
+        n_layer=26,
+        n_head=4,
+        n_query_groups=1,
+        head_size=256,
+        rotary_percentage=1.0,
+        rope_adjustments=None,
+        parallel_residual=False,
+        bias=False,
+        norm_class_name="RMSNorm",
+        mlp_class_name="GemmaMLP",
+        gelu_approximate="tanh",
+        post_attention_norm=True,
+        post_mlp_norm=True,
+        norm_qk=True,
+        rope_base=1000000,
+        rope_local_base_freq=10000,
+        # 5 local layers for every global layer
+        rope_indices=[0 if (i + 1) % 6 == 0 else 1 for i in range(26)],
+    ),
+    # https://huggingface.co/google/gemma-3-4b-pt/blob/main/config.json
+    dict(
+        name="Gemma-3-4b-pt",
+        hf_config=dict(org="google", name="gemma-3-4b-pt"),
+        scale_embeddings=True,
+        attention_scores_scalar=256,
+        vocab_size=262144,
+        block_size=131072,
+        sliding_window_size=1024,
+        # 5 local layers for every global layer
+        sliding_window_indices=[0 if (i + 1) % 6 == 0 else 1 for i in range(34)],
+        intermediate_size=10240,
+        n_embd=2560,
+        n_layer=34,
+        n_head=8,
+        n_query_groups=4,
+        head_size=256,
+        rotary_percentage=1.0,
+        rope_adjustments=dict(factor=8.0),
+        parallel_residual=False,
+        bias=False,
+        norm_class_name="RMSNorm",
+        mlp_class_name="GemmaMLP",
+        gelu_approximate="tanh",
+        post_attention_norm=True,
+        post_mlp_norm=True,
+        norm_qk=True,
+        rope_base=1000000,
+        rope_local_base_freq=10000,
+        # 5 local layers for every global layer
+        rope_indices=[0 if (i + 1) % 6 == 0 else 1 for i in range(34)],
+    ),
+    # https://huggingface.co/google/gemma-3-12b-pt/blob/main/config.json
+    dict(
+        name="Gemma-3-12b-pt",
+        hf_config=dict(org="google", name="gemma-3-12b-pt"),
+        scale_embeddings=True,
+        attention_scores_scalar=256,
+        vocab_size=262144,
+        block_size=131072,
+        sliding_window_size=1024,
+        # 5 local layers for every global layer
+        sliding_window_indices=[0 if (i + 1) % 6 == 0 else 1 for i in range(48)],
+        intermediate_size=15360,
+        n_embd=3840,
+        n_layer=48,
+        n_head=16,
+        n_query_groups=8,
+        head_size=256,
+        rotary_percentage=1.0,
+        rope_adjustments=dict(factor=8.0),
+        parallel_residual=False,
+        bias=False,
+        norm_class_name="RMSNorm",
+        mlp_class_name="GemmaMLP",
+        gelu_approximate="tanh",
+        post_attention_norm=True,
+        post_mlp_norm=True,
+        norm_qk=True,
+        rope_base=1000000,
+        rope_local_base_freq=10000,
+        # 5 local layers for every global layer
+        rope_indices=[0 if (i + 1) % 6 == 0 else 1 for i in range(48)],
+    ),
+    # https://huggingface.co/google/gemma-3-27b-pt/blob/main/config.json
+    dict(
+        name="Gemma-3-27b-pt",
+        hf_config=dict(org="google", name="gemma-3-27b-pt"),
+        scale_embeddings=True,
+        attention_scores_scalar=168,
+        vocab_size=262144,
+        block_size=131072,
+        sliding_window_size=1024,
+        # 5 local layers for every global layer
+        sliding_window_indices=[0 if (i + 1) % 6 == 0 else 1 for i in range(62)],
+        intermediate_size=21504,
+        n_embd=5376,
+        n_layer=62,
+        n_head=32,
+        n_query_groups=16,
+        head_size=128,
+        rotary_percentage=1.0,
+        rope_adjustments=dict(factor=8.0),
+        parallel_residual=False,
+        bias=False,
+        norm_class_name="RMSNorm",
+        mlp_class_name="GemmaMLP",
+        gelu_approximate="tanh",
+        post_attention_norm=True,
+        post_mlp_norm=True,
+        norm_qk=True,
+        rope_base=1000000,
+        rope_local_base_freq=10000,
+        # 5 local layers for every global layer
+        rope_indices=[0 if (i + 1) % 6 == 0 else 1 for i in range(62)],
+    ),
+
+
 ]
 configs.extend(gemma3)
 
