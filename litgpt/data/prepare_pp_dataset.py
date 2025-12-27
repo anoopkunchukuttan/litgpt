@@ -44,8 +44,8 @@ class PPDataRecipe(DataChunkRecipe):
 
 
 def prepare(
-    input_dir: Path = Path("data/SlimPajama-627B/train"),
-    output_dir: Path = Path("data/slimpajama/train"),
+    input_dir: Path = Path("indata/train"),
+    output_dir: Path = Path("outdata/train"),
     tokenizer_path: Path = Path("checkpoints/Llama-2-7b-hf/"),
     chunk_size: int = (4097 * 16384),
     fast_dev_run: bool = False,

@@ -12,7 +12,7 @@ from litgpt.data.lit_data import LitData
 from litgpt.data.longform import LongForm
 from litgpt.data.microllama import MicroLlama
 from litgpt.data.openwebtext import OpenWebText
-from litgpt.data.pretrain_preprocessed_dataset import PretrainProcessedDataset
+from litgpt.data.pp_dataset import PretrainProcessedDataset
 from litgpt.data.text_files import TextFiles
 from litgpt.data.text_files_multival import TextFilesMultiVal
 from litgpt.data.tinyllama import TinyLlama
