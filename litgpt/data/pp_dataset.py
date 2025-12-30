@@ -18,13 +18,13 @@ class PretrainProcessedDataset(DataModule):
     Supports multiple validation datasets for domain-specific or language-specific evaluation.
     """
 
-    data_path: Union[str, Path] = Path("data/")
-    """The path to the data directory, containing 'train' subdirectory
-    which is the output of the preprocessing step done in advance (e.g., using prepare_slimpajama.py).
+    train_data_path: Union[str, Path] = None
+    """The path to the train data directory
+    which is the output of the preprocessing step done in advance (e.g., using prepare_pp_dataset.py).
     The path can also be a remote path (e.g., s3://)."""
     val_data_path: Optional[Union[str, Path, Dict[str, Union[str, Path]]]] = None
     """The path(s) to validation data. Can be:
-    - None: Uses 'val' subdirectory under data_path (default behavior)
+    - None: invalid
     - str/Path: Single validation dataset path
     - Dict[str, str/Path]: Multiple validation datasets with custom names
       Example: {'val_main': 'data/val_main', 'val_domain1': 'data/val_domain1'}
@@ -35,12 +35,10 @@ class PretrainProcessedDataset(DataModule):
     """How many DataLoader processes to use for loading."""
 
     batch_size: int = field(init=False, repr=False, default=1)
-    seq_length: int = field(init=False, repr=False, default=2048)
+    seq_length: int = field(init=False, repr=False, default=4096)
 
     def __post_init__(self):
         super().__init__()
-        # Could be a remote path (s3://) or a local path
-        self.train_data_path = str(self.data_path).rstrip("/") + "/train"
         
         # Handle validation paths
         if self.val_data_path is None:
@@ -70,7 +68,7 @@ class PretrainProcessedDataset(DataModule):
                 raise FileNotFoundError(
                     "The data path is expected to be a directory containing preprocessed data."
                     f" The directory {path} does not exist."
-                    " Set it via `--data.data_path=...` or `--data.val_data_path=...`"
+                    " Set it via `--data.train_data_path=...` or `--data.val_data_path=...`"
                 )
 
     def train_dataloader(self) -> DataLoader:
