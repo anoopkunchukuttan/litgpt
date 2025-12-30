@@ -51,6 +51,7 @@ def prepare(
     fast_dev_run: bool = False,
 ) -> None:
     from litdata.processing.data_processor import DataProcessor
+    from litdata.streaming.item_loader import TokensLoader
 
     tokenizer_path = extend_checkpoint_dir(tokenizer_path)
     tokenizer = Tokenizer(tokenizer_path)
@@ -61,6 +62,7 @@ def prepare(
         fast_dev_run=fast_dev_run,
         num_workers=os.cpu_count(),
         num_downloaders=1,
+        item_loader=TokensLoader(),
     )
 
     start_time = time.time()
