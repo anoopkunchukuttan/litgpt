@@ -557,6 +557,8 @@ def convert_lit_checkpoint(checkpoint_dir: Path, output_dir: Path) -> None:
         copy_fn = partial(copy_weights_falcon, config)
     elif config.name.startswith("Gemma-2"):
         copy_fn = partial(copy_weights_gemma_2, config)
+    elif config.name.startswith("Gemma-3"):
+        copy_fn = partial(copy_weights_gemma_3, config)
     elif config.name.lower().startswith("phi"):
         copy_fn = partial(copy_weights_phi, config)
     elif config.name.lower().startswith(("qwen2.5", "qwq")):
