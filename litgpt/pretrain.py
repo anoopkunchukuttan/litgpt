@@ -320,6 +320,15 @@ def fit(
         for val_name, val_loader in val_dataloaders.items():
             loss = validate(fabric, model, val_loader, max_iters=eval.max_iters, dataset_name=val_name)
             val_losses[val_name] = f"{loss:.3f}"
+            # Log initial validation metrics (MISSING in current code)
+            metrics_val = {
+                f"{val_name}/initial_loss": loss.item(),
+                f"{val_name}/initial_ppl": math.exp(loss.item()),
+                f"{val_name}/loss": loss.item(),
+                f"{val_name}/ppl": math.exp(loss.item()),
+            }
+            fabric.log_dict(metrics_val, step=0)  # Log at step 0 for initial validation
+            fabric.print(f"  {val_name} | loss: {loss.item():.3f} | ppl: {math.exp(loss.item()):.3f}")
         val_loss = " | ".join([f"{name}: {loss}" for name, loss in val_losses.items()])
     else:
         if val_dataloaders:
@@ -454,7 +463,9 @@ def fit(
             val_loss = validate(fabric, model, val_loader, max_iters=eval.max_iters, dataset_name=val_name)
             metrics = {
                 f"{val_name}/final_loss": val_loss,
-                f"{val_name}/final_ppl": math.exp(val_loss)
+                f"{val_name}/final_ppl": math.exp(val_loss),
+                f"{val_name}/loss": val_loss,
+                f"{val_name}/ppl": math.exp(val_loss)
             }
             fabric.log_dict(metrics, step=state["iter_num"])
             fabric.print(f"  {val_name} | loss: {val_loss.item():.3f} | ppl: {math.exp(val_loss):.3f}")
