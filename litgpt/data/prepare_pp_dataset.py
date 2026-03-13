@@ -17,9 +17,10 @@ else:
 class PPDataRecipe(DataChunkRecipe):
     is_generator = True
 
-    def __init__(self, tokenizer: Tokenizer, chunk_size: int):
+    def __init__(self, tokenizer: Tokenizer, chunk_size: int, text_field: str = "text"):
         super().__init__(chunk_size)
         self.tokenizer = tokenizer
+        self.text_field = text_field
 
     def prepare_structure(self, input_dir):
         files = list(Path(input_dir).rglob("*.zst")) + list(Path(input_dir).rglob("*.jsonl"))
@@ -38,7 +39,7 @@ class PPDataRecipe(DataChunkRecipe):
         
         with file_handle as f:
             for row in f:
-                text = json.loads(row)["text"]
+                text = json.loads(row)[self.text_field]
                 text_ids = self.tokenizer.encode(string=text, bos=False, eos=True)
                 yield text_ids
 
@@ -49,13 +50,14 @@ def prepare(
     tokenizer_path: Path = Path("checkpoints/Llama-2-7b-hf/"),
     chunk_size: int = (4097 * 16384),
     fast_dev_run: bool = False,
+    text_field: str = "text",
 ) -> None:
     from litdata.processing.data_processor import DataProcessor
     from litdata.streaming.item_loader import TokensLoader
 
     tokenizer_path = extend_checkpoint_dir(tokenizer_path)
     tokenizer = Tokenizer(tokenizer_path)
-    data_recipe = PPDataRecipe(tokenizer=tokenizer, chunk_size=chunk_size)
+    data_recipe = PPDataRecipe(tokenizer=tokenizer, chunk_size=chunk_size, text_field=text_field)
     data_processor = DataProcessor(
         input_dir=str(input_dir),
         output_dir=str(output_dir),
